@@ -2,7 +2,7 @@ import pytest
 import allure
 import requests
 
-from helper_methods.helpers import PersonData
+from data.user_data import PersonData
 from static_data.urls import URL, Endpoints
 from static_data.status_codes import StatusCode
 from static_data.response_text import TextResponse

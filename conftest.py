@@ -1,6 +1,6 @@
 import pytest
 import requests
-from helper_methods.helpers import PersonData
+from data.user_data import PersonData
 from static_data.urls import URL, Endpoints
 
 
