@@ -17,11 +17,7 @@ class TestCreateOrder:
     def test_create_order_with_authorized_user(self, create_user):
         token = create_user[1].json()['accessToken']
         headers = {'Authorization': token}
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_ORDER, 
-            headers=headers, 
-            data=Ingredients.correct_ingredients_hash_data
-        )
+        response = requests.post(URL.main_url + Endpoints.CREATE_ORDER, headers=headers, json=Ingredients.correct_ingredients_hash_data)
         assert response.status_code == StatusCode.OK
         assert response.json().get('success') is True
 

@@ -29,6 +29,26 @@ class TestGetOrder:
         # Проверяем, что список заказов пустой (атомарная проверка)
         assert len(response_get_order.json()["orders"]) == 0
 
+    @allure.title('Get orders by authorized user with orders')
+    @allure.description('''
+    1. Create user and order;
+    2. Get user orders with auth;
+    3. Verify orders list contains the order;
+    ''')
+    def test_get_orders_by_authorized_user_with_orders(self, user_with_order):
+        """Получение списка заказов пользователя с заказами"""
+        response_get_orders = requests.get(
+            URL.main_url + Endpoints.GET_ORDERS, 
+            headers=user_with_order["headers"]
+        )
+        
+        assert response_get_orders.status_code == StatusCode.OK
+        assert response_get_orders.json().get("success") is True
+        assert "orders" in response_get_orders.json()
+        assert isinstance(response_get_orders.json()["orders"], list)
+        # Проверяем, что список заказов не пустой
+        assert len(response_get_orders.json()["orders"]) > 0
+
     @allure.title('Get order by unauthorized user')
     @allure.description('''
     1. Get user orders without auth;
