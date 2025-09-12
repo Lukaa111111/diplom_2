@@ -15,8 +15,8 @@ dist/
 *.swp
 *.swo
 *~
-allure-results/
-allure-report/
+!allure-report/latest/
+!allure-report/latest/**/*
 .pytest_cache/
 .coverage
 htmlcov/

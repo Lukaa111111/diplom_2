@@ -27,7 +27,7 @@ def create_unique_user_for_double_registration():
     
     yield payload, first_response
     
-    # Cleanup
+    
     if first_response.status_code == StatusCode.OK and 'accessToken' in first_response.json():
         token = first_response.json()['accessToken']
         UserAPI.delete_user(token)
@@ -41,7 +41,7 @@ def create_user_with_unique_email():
     
     yield payload, response
     
-    # Cleanup
+    
     if response.status_code == StatusCode.OK and 'accessToken' in response.json():
         token = response.json()['accessToken']
         UserAPI.delete_user(token)
@@ -60,7 +60,7 @@ def create_two_users():
     
     yield (payload1, response1), (payload2, response2)
     
-    # Cleanup
+    
     for response in [response1, response2]:
         if response.status_code == StatusCode.OK and 'accessToken' in response.json():
             token = response.json()['accessToken']
