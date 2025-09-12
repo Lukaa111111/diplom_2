@@ -1,7 +1,6 @@
 import pytest
 import allure
-import requests
-
+from api_client import UserAPI
 from data.user_data import PersonData
 from static_data.urls import URL, Endpoints
 from static_data.status_codes import StatusCode
@@ -29,49 +28,35 @@ class TestCreateUser:
     1. Попытка создания пользователя с существующими данными;
     2. Проверка ошибки;
     ''')
-    def test_create_existing_user_failure(self):
-        """Тест двойной регистрации (атомарный - создает пользователя сам)"""
-        # 1. Создаем первого пользователя
-        payload = PersonData.create_correct_user_data()
-        first_response = requests.post(
-            URL.main_url + Endpoints.CREATE_USER, 
-            json=payload
-        )
+    def test_create_existing_user_failure(self, create_unique_user_for_double_registration):
+        """Тест двойной регистрации"""
+        user_data, first_response = create_unique_user_for_double_registration
         
-        # 2. Пытаемся создать второго с теми же данными (основная проверка)
-        second_response = requests.post(
-            URL.main_url + Endpoints.CREATE_USER, 
-            json=payload
-        )
+        # Пытаемся создать второго с теми же данными
+        second_response = UserAPI.create_user(user_data)
         
         assert second_response.status_code == StatusCode.FORBIDDEN
         assert second_response.json().get('success') is False
         assert second_response.json().get('message') == TextResponse.DOUBLE_USER_CREATED
-        
-        # 3. Удаляем первого пользователя (cleanup)
-        if first_response.status_code == StatusCode.OK:
-            token = first_response.json()['accessToken']
-            requests.delete(
-                URL.main_url + Endpoints.DELETE_USER, 
-                headers={"Authorization": token}
-            )
 
-    @allure.title('Создание пользователя без обязательных полей')
-    @allure.description('''
-    1. Попытка создания пользователя без обязательных полей;
-    2. Проверка ошибки валидации.
-    ''')
-    @pytest.mark.parametrize('payload', [
-        PersonData.create_incorrect_user_data_without_email(),
-        PersonData.create_incorrect_user_data_without_password(),
-        PersonData.create_incorrect_user_data_without_name()
-    ])
-    def test_create_user_missing_required_fields(self, payload):
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_USER, 
-            json=payload
-        )
-        
+    @allure.title('Создание пользователя без email')
+    def test_create_user_without_email(self):
+        payload = PersonData.create_incorrect_user_data_without_email()
+        response = UserAPI.create_user(payload)
+        assert response.status_code == StatusCode.FORBIDDEN
+        assert response.json().get("success") is False
+
+    @allure.title('Создание пользователя без пароля')
+    def test_create_user_without_password(self):
+        payload = PersonData.create_incorrect_user_data_without_password()
+        response = UserAPI.create_user(payload)
+        assert response.status_code == StatusCode.FORBIDDEN
+        assert response.json().get("success") is False
+
+    @allure.title('Создание пользователя без имени')
+    def test_create_user_without_name(self):
+        payload = PersonData.create_incorrect_user_data_without_name()
+        response = UserAPI.create_user(payload)
         assert response.status_code == StatusCode.FORBIDDEN
         assert response.json().get("success") is False
 
@@ -79,11 +64,6 @@ class TestCreateUser:
     @allure.description('Проверка валидации email при регистрации')
     def test_create_user_invalid_email_format(self):
         payload = PersonData.invalid_email_format()
-        
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_USER, 
-            json=payload
-        )
-        
+        response = UserAPI.create_user(payload)
         assert response.status_code == StatusCode.FORBIDDEN
         assert response.json().get("success") is False

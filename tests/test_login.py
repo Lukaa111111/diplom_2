@@ -1,11 +1,9 @@
 import pytest
 import allure
-import requests
-
-from data.user_data import PersonData
+from api_client import UserAPI
+from data.login_data import LoginTestData
 from static_data.urls import URL, Endpoints
 from static_data.status_codes import StatusCode
-from static_data.response_text import TextResponse
 
 
 class TestLoginUser:
@@ -22,10 +20,7 @@ class TestLoginUser:
             "password": create_user[0]["password"]
         }
         
-        login_response = requests.post(
-            URL.main_url + Endpoints.LOGIN, 
-            json=login_data
-        )
+        login_response = UserAPI.login(login_data)
         
         assert login_response.status_code == StatusCode.OK
         assert login_response.json().get("success") is True
@@ -37,46 +32,41 @@ class TestLoginUser:
     2. Verify error;
     ''')
     def test_login_wrong_password(self, create_user):
-        login_data = {
-            "email": create_user[0]["email"],
-            "password": "wrong_password_123"
-        }
+        login_data = LoginTestData.WRONG_PASSWORD.copy()
+        login_data["email"] = create_user[0]["email"]
         
-        login_response = requests.post(
-            URL.main_url + Endpoints.LOGIN, 
-            json=login_data
-        )
+        login_response = UserAPI.login(login_data)
         
         assert login_response.status_code == StatusCode.UNAUTHORIZED
         assert login_response.json().get("success") is False
 
-    # Остальные атомарные тесты не трогаем
     @allure.title('Login with non-existent email')
     def test_login_nonexistent_email(self):
-        login_data = {
-            "email": "nonexistent@example.com",
-            "password": "any_password"
-        }
-        
-        login_response = requests.post(
-            URL.main_url + Endpoints.LOGIN, 
-            json=login_data
-        )
+        login_response = UserAPI.login(LoginTestData.NONEXISTENT_EMAIL)
         
         assert login_response.status_code == StatusCode.UNAUTHORIZED
         assert login_response.json().get("success") is False
 
-    @allure.title('Login without required fields')
-    @pytest.mark.parametrize('login_data', [
-        {"password": "password123"},
-        {"email": "test@example.com"}, 
-        {}
-    ])
-    def test_login_missing_required_fields(self, login_data):
-        login_response = requests.post(
-            URL.main_url + Endpoints.LOGIN, 
-            json=login_data
-        )
-        
+    @allure.title('Login without email')
+    def test_login_missing_email(self):
+        login_response = UserAPI.login(LoginTestData.MISSING_EMAIL)
+        assert login_response.status_code == StatusCode.UNAUTHORIZED
+        assert login_response.json().get("success") is False
+
+    @allure.title('Login without password')
+    def test_login_missing_password(self):
+        login_response = UserAPI.login(LoginTestData.MISSING_PASSWORD)
+        assert login_response.status_code == StatusCode.UNAUTHORIZED
+        assert login_response.json().get("success") is False
+
+    @allure.title('Login with empty data')
+    def test_login_empty_data(self):
+        login_response = UserAPI.login(LoginTestData.EMPTY_DATA)
+        assert login_response.status_code == StatusCode.UNAUTHORIZED
+        assert login_response.json().get("success") is False
+
+    @allure.title('Login with invalid email format')
+    def test_login_invalid_email_format(self):
+        login_response = UserAPI.login(LoginTestData.INVALID_EMAIL_FORMAT)
         assert login_response.status_code == StatusCode.UNAUTHORIZED
         assert login_response.json().get("success") is False

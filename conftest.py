@@ -1,46 +1,87 @@
 import pytest
-import requests
 from data.user_data import PersonData
-from static_data.urls import URL, Endpoints
+from api_client import UserAPI, OrderAPI
 from static_data.ingredients_hash_data import Ingredients
+from static_data.status_codes import StatusCode
 
 
 @pytest.fixture
 def create_user():
     """Фикстура для создания пользователя с последующим удалением"""
     payload = PersonData.create_correct_user_data()
-    response = requests.post(URL.main_url + Endpoints.CREATE_USER, json=payload)
+    response = UserAPI.create_user(payload)
     
     yield payload, response
     
     # Cleanup - удаляем пользователя после теста
-    if response.status_code == 200 and 'accessToken' in response.json():
+    if response.status_code == StatusCode.OK and 'accessToken' in response.json():
         token = response.json()['accessToken']
-        requests.delete(
-            URL.main_url + Endpoints.DELETE_USER, 
-            headers={"Authorization": token}
-        )
+        UserAPI.delete_user(token)
+
+
+@pytest.fixture
+def create_unique_user_for_double_registration():
+    """Фикстура для теста двойной регистрации"""
+    payload = PersonData.create_correct_user_data()
+    first_response = UserAPI.create_user(payload)
+    
+    yield payload, first_response
+    
+    # Cleanup
+    if first_response.status_code == StatusCode.OK and 'accessToken' in first_response.json():
+        token = first_response.json()['accessToken']
+        UserAPI.delete_user(token)
+
+
+@pytest.fixture
+def create_user_with_unique_email():
+    """Фикстура для пользователя с гарантированно уникальным email"""
+    payload = PersonData.create_correct_user_data()
+    response = UserAPI.create_user(payload)
+    
+    yield payload, response
+    
+    # Cleanup
+    if response.status_code == StatusCode.OK and 'accessToken' in response.json():
+        token = response.json()['accessToken']
+        UserAPI.delete_user(token)
+
+
+@pytest.fixture
+def create_two_users():
+    """Фикстура для создания двух пользователей"""
+    # Первый пользователь
+    payload1 = PersonData.create_correct_user_data()
+    response1 = UserAPI.create_user(payload1)
+    
+    # Второй пользователь
+    payload2 = PersonData.create_correct_user_data()
+    response2 = UserAPI.create_user(payload2)
+    
+    yield (payload1, response1), (payload2, response2)
+    
+    # Cleanup
+    for response in [response1, response2]:
+        if response.status_code == StatusCode.OK and 'accessToken' in response.json():
+            token = response.json()['accessToken']
+            UserAPI.delete_user(token)
 
 
 @pytest.fixture
 def user_with_order(create_user):
     """Фикстура для пользователя с заказом"""
-    token = create_user[1].json().get('accessToken')
-    if not token:
-        pytest.skip("Не удалось получить токен пользователя")
+    # Гарантируем, что пользователь создан успешно
+    assert create_user[1].status_code == StatusCode.OK
+    assert 'accessToken' in create_user[1].json()
     
-    headers = {'Authorization': token}
+    token = create_user[1].json()['accessToken']
     
     # Создаем заказ
-    order_response = requests.post(
-        URL.main_url + Endpoints.CREATE_ORDER,
-        headers=headers, 
-        json=Ingredients.correct_ingredients_hash_data
-    )
+    order_response = OrderAPI.create_order(token, Ingredients.correct_ingredients_hash_data)
     
     yield {
         "user_data": create_user[0],
         "token": token,
-        "order_response": order_response,
-        "headers": headers
+        "order_response": order_response
     }
+

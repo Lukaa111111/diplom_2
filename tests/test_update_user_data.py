@@ -6,6 +6,7 @@ from static_data.urls import URL, Endpoints
 from static_data.response_text import TextResponse
 from static_data.status_codes import StatusCode
 from data.user_data import UpdateData
+from data.test_data import TestConstants
 
 
 class TestChangeUserData:
@@ -16,7 +17,7 @@ class TestChangeUserData:
         token = create_user[1].json()['accessToken']
         headers = {'Authorization': token}
         
-        new_name = {"name": "Обновленное Имя"}
+        new_name = {"name": TestConstants.UPDATED_NAME}
         response = requests.patch(
             URL.main_url + Endpoints.CHANGE_DATA, 
             headers=headers, 
@@ -25,25 +26,41 @@ class TestChangeUserData:
         
         assert response.status_code == StatusCode.OK
         assert response.json().get('success') is True
-        assert response.json()['user']['name'] == "Обновленное Имя"
+        assert response.json()['user']['name'] == TestConstants.UPDATED_NAME
 
-    @allure.title('Change user email with auth')
-    @allure.description('Change user email with authorization')
-    def test_change_user_email_with_auth(self, create_user):
-        token = create_user[1].json()['accessToken']
+    @allure.title('Change user email with auth - successful update')
+    @allure.description('Change user email with authorization - success case')
+    def test_change_user_email_with_auth_success(self, create_user_with_unique_email):
+        token = create_user_with_unique_email[1].json()['accessToken']
         headers = {'Authorization': token}
         
-        new_email = {"email": f"updated_{create_user[0]['email']}"}
+        new_email = {"email": f"updated_{create_user_with_unique_email[0]['email']}"}
         response = requests.patch(
             URL.main_url + Endpoints.CHANGE_DATA, 
             headers=headers, 
             json=new_email
         )
         
-        # Проверяем успешный ответ или конфликт email (может быть занят)
-        assert response.status_code in [StatusCode.OK, StatusCode.FORBIDDEN]
-        if response.status_code == StatusCode.OK:
-            assert response.json().get('success') is True
+        assert response.status_code == StatusCode.OK
+        assert response.json().get('success') is True
+
+    @allure.title('Change user email with auth - email conflict')
+    @allure.description('Change user email with authorization - email already exists')
+    def test_change_user_email_with_auth_conflict(self, create_two_users):
+        first_user, second_user = create_two_users
+        token = first_user[1].json()['accessToken']
+        headers = {'Authorization': token}
+        
+        # Пытаемся изменить email первого пользователя на email второго
+        conflict_email = {"email": second_user[0]['email']}
+        response = requests.patch(
+            URL.main_url + Endpoints.CHANGE_DATA, 
+            headers=headers, 
+            json=conflict_email
+        )
+        
+        assert response.status_code == StatusCode.FORBIDDEN
+        assert response.json().get('success') is False
 
     @allure.title('Change user password with auth')
     @allure.description('Change user password with authorization')
@@ -51,7 +68,7 @@ class TestChangeUserData:
         token = create_user[1].json()['accessToken']
         headers = {'Authorization': token}
         
-        new_password = {"password": "new_secure_password_123!"}
+        new_password = {"password": TestConstants.UPDATED_PASSWORD}
         response = requests.patch(
             URL.main_url + Endpoints.CHANGE_DATA, 
             headers=headers, 
@@ -61,10 +78,10 @@ class TestChangeUserData:
         assert response.status_code == StatusCode.OK
         assert response.json().get('success') is True
 
-    @allure.title('Change complete user data with auth')
-    @allure.description('Change all user fields with authorization')
-    def test_change_complete_user_data_with_auth(self, create_user):
-        token = create_user[1].json()['accessToken']
+    @allure.title('Change complete user data with auth - successful update')
+    @allure.description('Change all user fields with authorization - success case')
+    def test_change_complete_user_data_with_auth_success(self, create_user_with_unique_email):
+        token = create_user_with_unique_email[1].json()['accessToken']
         headers = {'Authorization': token}
         
         update_data = UpdateData.get_complete_update_test_cases()[0]
@@ -74,10 +91,8 @@ class TestChangeUserData:
             json=update_data
         )
         
-        # Проверяем успешный ответ или конфликт email
-        assert response.status_code in [StatusCode.OK, StatusCode.FORBIDDEN]
-        if response.status_code == StatusCode.OK:
-            assert response.json().get('success') is True
+        assert response.status_code == StatusCode.OK
+        assert response.json().get('success') is True
 
     @allure.title('Change data without auth test')
     @allure.description('Attempt to change user data without authorization')

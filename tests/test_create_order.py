@@ -1,7 +1,5 @@
-import requests
 import allure
-
-from static_data.urls import URL, Endpoints
+from api_client import OrderAPI
 from static_data.status_codes import StatusCode
 from static_data.response_text import TextResponse
 from static_data.ingredients_hash_data import Ingredients
@@ -16,8 +14,7 @@ class TestCreateOrder:
     ''')
     def test_create_order_with_authorized_user(self, create_user):
         token = create_user[1].json()['accessToken']
-        headers = {'Authorization': token}
-        response = requests.post(URL.main_url + Endpoints.CREATE_ORDER, headers=headers, json=Ingredients.correct_ingredients_hash_data)
+        response = OrderAPI.create_order(token, Ingredients.correct_ingredients_hash_data)
         assert response.status_code == StatusCode.OK
         assert response.json().get('success') is True
 
@@ -27,10 +24,7 @@ class TestCreateOrder:
     2. Verify success.
     ''')
     def test_create_order_by_unauthorized_user(self):
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_ORDER, 
-            data=Ingredients.correct_ingredients_hash_data
-        )
+        response = OrderAPI.create_order(None, Ingredients.correct_ingredients_hash_data)
         assert response.status_code == StatusCode.OK
         assert response.json().get('success') is True
 
@@ -41,12 +35,7 @@ class TestCreateOrder:
     ''')
     def test_create_order_with_invalid_hash(self, create_user):
         token = create_user[1].json()['accessToken']
-        headers = {'Authorization': token}
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_ORDER,
-            headers=headers, 
-            data=Ingredients.incorrect_ingredients_hash_data
-        )
+        response = OrderAPI.create_order(token, Ingredients.incorrect_ingredients_hash_data)
         assert response.status_code == StatusCode.INTERNAL_SERVER_ERROR
         assert TextResponse.INTERNAL_SERVER_ERROR in response.text
 
@@ -57,11 +46,6 @@ class TestCreateOrder:
     ''')
     def test_create_order_without_ingredients(self, create_user):
         token = create_user[1].json()['accessToken']
-        headers = {'Authorization': token}
-        response = requests.post(
-            URL.main_url + Endpoints.CREATE_ORDER,
-            headers=headers, 
-            data=Ingredients.empty_ingredients_data
-        )
+        response = OrderAPI.create_order(token, Ingredients.empty_ingredients_data)
         assert response.status_code == StatusCode.BAD_REQUEST
         assert response.json().get('success') is False
